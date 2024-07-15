@@ -1,0 +1,191 @@
+import cv2
+import mediapipe as mp
+import serial
+import time
+import math
+import winsound
+#import simpleaudio as sa
+transmitter = serial.Serial('COM3', 115200, timeout=100)
+#soundobj = sa.WaveObject.from_wave_file('Conected.wav')
+#soundobj.play()
+#time.sleep(2)
+
+
+def forward():
+    transmitter.write("F".encode('utf-8'))
+
+
+def back():
+    transmitter.write("B".encode('utf-8'))
+
+
+def stop():
+    transmitter.write("S".encode('utf-8'))
+
+
+def rotc():
+    transmitter.write("L".encode('utf-8'))
+
+
+def rotcc():
+    transmitter.write("R".encode('utf-8'))
+
+
+def left():
+    transmitter.write("X".encode('utf-8'))
+
+
+def right():
+    transmitter.write("Z".encode('utf-8'))
+
+
+class CircularList:
+    def __init__(self, items):
+        if not items:
+            raise ValueError("The list must contain at least one item.")
+        self.items = items
+        self.index = 0
+
+    def get_current(self):
+        return self.items[self.index]
+
+    def increment(self):
+        self.index = (self.index + 1) % len(self.items)
+
+    def increment_conditionally(self, condition):
+        if condition:
+            self.increment()
+
+
+Clist = CircularList(['1', '2', '3'])
+transmitter.write("1".encode('utf-8'))
+forward()
+#transmitter.write("F".encode('utf-8'))
+time. sleep(0.5)
+back()
+#transmitter.write("B".encode('utf-8'))
+time. sleep(0.5)
+forward()
+time.sleep(0.1)
+#transmitter.write("2".encode('utf-8'))
+#transmitter.write("L".encode('utf-8'))
+#time. sleep(1)
+#transmitter.write("R".encode('utf-8'))
+#time. sleep(1)
+##transmitter.write("I".encode('utf-8'))
+#time. sleep(1)
+#transmitter.write("K".encode('utf-8'))
+##time. sleep(1)
+#transmitter.write("J".encode('utf-8'))
+#time. sleep(1)
+#transmitter.write("M".encode('utf-8'))
+#time. sleep(1)
+#transmitter.write("Z".encode('utf-8'))
+#time. sleep(1)
+#transmitter.write("X".encode('utf-8'))
+#time. sleep(1)
+stop()
+#soundobj = sa.WaveObject.from_wave_file('Cnline.wav')
+#soundobj.play()
+#time.sleep(1)
+transmitter.write("2".encode('utf-8'))
+#transmitter.write("S".encode('utf-8'))
+cap = cv2.VideoCapture(0)
+mpHands = mp.solutions.hands
+hands = mpHands.Hands()
+mpDraw = mp.solutions.drawing_utils
+TrigF = 0
+TrigB = 0
+TrigR = 0
+TrigL = 0
+TrigRAC = 0
+TrigRC = 0
+angle = 90
+TrigSpeed = 0
+while True:
+    success, img = cap.read()
+    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = hands.process(imgRGB)
+    #print(results.multi_hand_landmarks)
+    if results.multi_hand_landmarks:
+            for handLms in results.multi_hand_landmarks:
+                for id, lm in enumerate(handLms.landmark):
+                    if id == 4:  # thumb
+                        x4, y4 = lm.x, lm.y
+                    if id == 8:  # index
+                        x8, y8 = lm.x, lm.y
+                    if id == 7:  # index bot
+                        x7, y7 = lm.x, lm.y
+                    if id== 6:
+                        x6,y6 = lm.x, lm.y
+                    if id == 0:  # palm
+                        x0, y0 = lm.x, lm.y
+                    if id == 12:  # mid
+                        x12, y12 = lm.x, lm.y
+                    if id == 11:  # mid bot
+                        x11, y11 = lm.x, lm.y
+                    if id == 16:  # ring
+                        x16, y16 = lm.x, lm.y
+                    if id == 15:  # ring bot
+                        x15, y15 = lm.x, lm.y
+                    if id == 20:  # pinky
+                        x20, y20 = lm.x, lm.y
+                    if id == 19:  # pinky bot
+                        x19, y19 = lm.x, lm.y
+            DistRef = abs(math.hypot(x4-x0, y4-y0))
+            DistRefx= abs(math.hypot(x12-x16, y12-y16))
+            DistSwitchMid = abs(math.hypot(x12-x4,y12-y4))
+            DistSwitchRing = abs(math.hypot(x16-x4,y16-y4))
+            DistSwitchPink = abs(math.hypot(x20-x4, y20-y4))
+            DistSwitchIndex = abs(math.hypot(x8-x4, y8-y4))
+            DistSwitchIndMid = abs(math.hypot(x11-x7, y11-y7))
+            DistSwitchRingPink = abs(math.hypot(x19-x15, y19-y15))
+            DistSwitchSpeed = abs(math.hypot(x8-x0 , y8-y0))
+            angle = abs(math.degrees(math.atan2(y8-y6, x8-x6)))
+            TrigF = DistRef/DistSwitchMid
+            TrigB = DistRef/DistSwitchRing
+            TrigL = DistRef/DistSwitchIndex
+            TrigR = DistRef/DistSwitchPink
+            TrigRAC = DistRefx/DistSwitchIndMid
+            TrigRC = DistRefx/DistSwitchRingPink
+            TrigSpeed = DistRef/DistSwitchSpeed
+            mpDraw.draw_landmarks(img, handLms, mpHands.HAND_CONNECTIONS)
+            if TrigF > 3:
+                forward()
+            elif TrigB > 3:
+                back()
+            elif TrigL > 3:
+                left()
+            elif TrigR > 3:
+                right()
+            elif angle > 110:
+                rotc()
+            elif angle < 45:
+                rotcc()
+            elif TrigSpeed > 2:
+                stop()
+                transmitter.write(Clist.get_current().encode('utf-8'))
+                print(f"Speed Changed to:{Clist.get_current()}\n")
+                if Clist.get_current() == '1':
+                    winsound.Beep(3000, 350)
+                elif Clist.get_current() == '2':
+                    winsound.Beep(3000, 350)
+                    # time.sleep(0.03)
+                    winsound.Beep(3000, 350)
+                elif Clist.get_current() == '3':
+                    winsound.Beep(3000, 350)
+                    # time.sleep(0.03)
+                    winsound.Beep(3000, 350)
+                    # time.sleep(0.03)
+                    winsound.Beep(3000, 350)
+                Clist.increment()
+                time.sleep(0.4)
+                TrigSpeed = 0
+            else:
+                stop()
+            cv2.imshow("haha", img)
+            cv2.waitKey(1)
+    else:
+        stop()
+        cv2.imshow("haha", img)
+        cv2.waitKey(1)
